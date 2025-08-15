@@ -89,14 +89,12 @@ const updateProduct = asyncHandler(async (req, res, next) => {
 });
 
 const deleteProduct = asyncHandler(async (req, res, next) => {
-  const product = await Product.findById(req.params.pid);
+  const product = await Product.findByIdAndDelete(req.params.pid);
 
   if (!product)
     return next(
       new AppError(`Ooops no product with ID: ${req.params.pid}`, 404)
     );
-
-  delete product;
 
   return res.status(204).json({ status: "success", data: {} });
 });

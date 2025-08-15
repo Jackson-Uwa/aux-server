@@ -4,7 +4,7 @@ const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
-  // console.log(err);
+  console.log(err);
 
   if (err.value !== req.params.id || err.name === "CastError") {
     const message = `cast error, no records found for ID: ${err.value}`;
@@ -25,7 +25,7 @@ const errorHandler = (err, req, res, next) => {
     error = new ErrorResponse(`jwt error`, 400);
   }
 
-  res.status(error.statusCode || 400).json({
+  return res.status(error.statusCode || 400).json({
     success: false,
     error: error.message || "Server error!",
   });

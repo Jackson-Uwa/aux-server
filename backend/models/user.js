@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 
@@ -13,7 +13,6 @@ const userSchema = mongoose.Schema({
     required: [true, "Please enter your email address"],
     unique: true,
     lowercase: true,
-    // validate: [validator.isEmail, "Provide email"],
   },
   photo: { type: String, default: "default.jpg" },
   role: {
@@ -54,8 +53,8 @@ userSchema.pre("save", function (next) {
 });
 
 userSchema.pre("save", function (next) {
-  //on every save or new user if the password field is not modified or newly created move to the
-  //next middleware else set the passwordChangedAt property to the current time
+  // if the password field is not modified or newly created move to the
+  // next middleware else set the passwordChangedAt property to the current time
   if (!this.isModified("password") || this.isNew) return next();
   this.passwordChangedAt = Date.now() - 1000;
   next();
@@ -67,11 +66,14 @@ userSchema.pre(/^find/, function (next) {
   next();
 });
 
-userSchema.methods.correctPassword = async function (
-  candidatePassword,
-  userPassword
-) {
-  return await bcrypt.compare(candidatePassword, userPassword);
+userSchema.methods.matchPassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+userSchema.methods.signToken = function () {
+  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
+  });
 };
 
 userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {

@@ -1,4 +1,8 @@
 const express = require("express");
+const fileupload = require("express-fileupload");
+const path = require("path");
+const cookieParser = require("cookie-parser");
+
 require("dotenv").config({
   path: ".env",
 });
@@ -11,6 +15,8 @@ const cors = require("cors");
 const app = express();
 connectDB();
 
+app.use(cookieParser());
+
 app.use(
   cors({
     origin: "*",
@@ -20,6 +26,10 @@ app.use(
 
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
+
+app.use(fileupload());
+
+app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.use("/api/v1/users", require("./routes/users"));
 app.use("/api/v1/products", require("./routes/products"));

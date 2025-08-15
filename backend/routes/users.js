@@ -6,7 +6,13 @@ const {
   deleteUser,
 } = require("../controllers/users");
 
-const { Register, LogIn, LogOut, verify } = require("../controllers/auth/auth");
+const {
+  Register,
+  LogIn,
+  verify,
+  LogOut,
+  uploadProfile,
+} = require("../controllers/auth/auth");
 
 const router = express.Router();
 
@@ -18,7 +24,9 @@ router.post("/auth/register", Register);
 router.post("/auth/login", LogIn);
 router.post("/auth/logout", LogOut);
 
+router.patch("/:uid/my-profile", uploadProfile);
 router.patch("/:uid", updateUser);
+
 router.delete("/:uid", deleteUser);
 
 module.exports = router;
