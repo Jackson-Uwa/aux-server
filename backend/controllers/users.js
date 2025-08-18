@@ -36,10 +36,10 @@ const getUsers = asyncHandler(async (req, res, next) => {
   });
 });
 
-const getUserByID = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.params.uid);
+const getUserProfileData = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
   if (!user) {
-    return next(new AppError(`Ooops no user with ID: ${req.params.uid}`, 404));
+    return next(new AppError(`Ooops no user with ID: ${req.user.id}`, 404));
   }
   return res.status(200).json({
     status: "success",
@@ -47,35 +47,17 @@ const getUserByID = asyncHandler(async (req, res, next) => {
   });
 });
 
-const updateUser = asyncHandler(async (req, res, next) => {
-  const updatedUser = await User.findByIdAndUpdate(req.params.uid, req.body, {
-    new: true,
-    runValidators: true,
-  });
-
-  if (!updatedUser) {
-    return next(new AppError(`Ooops no user with ID: ${req.params.uid}`, 404));
-  }
-  return res.status(200).json({
-    status: "success",
-    updatedUser,
-  });
-});
-
 const deleteUser = asyncHandler(async (req, res, next) => {
-  const { uid } = req.params;
-
-  const user = await User.findByIdAndDelete(uid);
+  const user = await User.findByIdAndDelete(req.user.id);
 
   if (!user) {
-    return next(new AppError(`Ooops no user with ID: ${req.params.uid}`, 404));
+    return next(new AppError(`Ooops no user with ID: ${req.user.id}`, 404));
   }
-  return res.status(204).json({ status: "success", stranger: {} });
+  return res.status(204).json({ status: "success" });
 });
 
 module.exports = {
   getUsers,
-  getUserByID,
-  updateUser,
+  getUserProfileData,
   deleteUser,
 };

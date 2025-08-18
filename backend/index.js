@@ -2,6 +2,7 @@ const express = require("express");
 const fileupload = require("express-fileupload");
 const path = require("path");
 const cookieParser = require("cookie-parser");
+const morgan = require("morgan");
 
 require("dotenv").config({
   path: ".env",
@@ -16,6 +17,7 @@ const app = express();
 connectDB();
 
 app.use(cookieParser());
+app.use(morgan("dev"));
 
 app.use(
   cors({

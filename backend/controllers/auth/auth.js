@@ -1,8 +1,10 @@
 const User = require("../../models/user");
 const path = require("path");
+const crypto = require("crypto");
 const asyncHandler = require("../../utils/asyncHandler/asyncHandler");
 const AppError = require("../../utils/errorHandler/AppError");
 const jwt = require("jsonwebtoken");
+const { Email } = require("../../utils/email/email");
 
 const SendToken = (user, statusCode, res) => {
   const token = user.signToken();
@@ -41,7 +43,7 @@ const LogIn = asyncHandler(async (req, res, next) => {
     return next(new AppError("Incorrect email or password", 401));
   }
 
-  return SendToken(user, 200, res);
+  SendToken(user, 200, res);
 });
 
 const LogOut = (req, res, next) => {
@@ -51,7 +53,7 @@ const LogOut = (req, res, next) => {
   res.status(200).json({ status: "success" });
 };
 
-const verify = (req, res, next) => {
+const verify = asyncHandler(async (req, res, next) => {
   let token;
 
   if (req.cookies.jwt) token = req.cookies.jwt;
@@ -60,19 +62,44 @@ const verify = (req, res, next) => {
     return next(
       new AppError("You are not logged in! please log in to get access...", 401)
     );
-  /*
-  const [err, decoded] = jwt.verify(token, process.env.JWT_SECRET);
-  if (err) {
-    return next(new AppError("Failed to authenticate user", 401));
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const currentUser = await User.findById(decoded.id);
+    req.user = currentUser;
+  } catch {
+    next(new AppError("Invalid token", 500));
   }
-  console.log(decoded);
-  req.user = decoded;
-*/
   next();
+});
+
+const isLoggedIn = async (req, res, next) => {
+  if (req.cookies.jwt) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const currentUser = await User.findById(decoded.id);
+      req.user = currentUser;
+      res.locals.user = currentUser;
+    } catch {
+      next();
+    }
+  }
 };
 
-const uploadProfile = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.params.uid);
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    //roles ['admin', 'user'].role=user
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new AppError("User permission denied, contact IT help desk...", 403)
+      );
+    }
+    next();
+  };
+};
+
+const updateMe = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
 
   if (!user) {
     return next(
@@ -101,9 +128,19 @@ const uploadProfile = asyncHandler(async (req, res, next) => {
         return next(new AppError("problem uploading file...", 500));
       }
 
-      await User.findByIdAndUpdate(req.params.uid, {
-        photo: userPhoto.name,
-      });
+      await User.findByIdAndUpdate(
+        req.user.id,
+        {
+          firstName: req.body.firstName,
+          lastName: req.body.lastName,
+          email: req.body.email,
+          photo: userPhoto.name,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
 
       res.status(200).json({
         success: true,
@@ -113,10 +150,85 @@ const uploadProfile = asyncHandler(async (req, res, next) => {
   );
 });
 
+const deleteMe = asyncHandler(async (req, res, next) => {
+  return 0;
+});
+
+const forgotPassword = asyncHandler(async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
+
+  if (!user) {
+    return next(new AppError(`Sorry, no user with this email address`, 400));
+  }
+
+  const resetToken = await user.createResetToken();
+
+  await user.save({ validateBeforeSave: false });
+
+  const resetUrl = `${req.protocol}://${req.get(
+    "host"
+  )}/api/v1/users/auth/reset-password/${resetToken}`;
+
+  const message = `Kindly reset your password with this link >> ${resetUrl}`;
+
+  try {
+    await Email({
+      email: user.email,
+      subject: "Reset password",
+      message,
+    });
+
+    return res.status(200).json({
+      success: true,
+      resetLink: `https://auxiliary.com/auth/reset-password/${resetToken}`,
+      data: "Email sent successfully...",
+    });
+  } catch (error) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+
+    user.save({ validateBeforeSave: false });
+    return next(
+      new AppError("There was an error sending reset password email", 500)
+    );
+  }
+});
+
+const resetPassword = asyncHandler(async (req, res, next) => {
+  const resetToken = crypto
+    .createHash("sha256")
+    .update(req.params.resetToken)
+    .digest("hex");
+
+  const user = await User.findOne({
+    passwordResetToken: resetToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return next(new AppError("Reset token has expired.", 403));
+  }
+
+  user.password = req.body.password;
+  user.confirmPassword = req.body.confirmPassword;
+
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+
+  await user.save();
+
+  SendToken(user, 200, res);
+});
+
 module.exports = {
   Register,
   LogIn,
   LogOut,
   verify,
-  uploadProfile,
+  isLoggedIn,
+  authorize,
+  updateMe,
+  forgotPassword,
+  resetPassword,
+  deleteMe,
 };

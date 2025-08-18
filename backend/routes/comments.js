@@ -1,4 +1,5 @@
 const express = require("express");
+
 const {
   getComment,
   getComments,
@@ -7,7 +8,7 @@ const {
   deleteComment,
 } = require("../controllers/comment");
 
-const { verify } = require("../controllers/auth/auth");
+const { verify, authorize } = require("../controllers/auth/auth");
 
 const router = express.Router();
 
@@ -16,6 +17,6 @@ router.get("/", getComments);
 router.get("/:commentId", getComment);
 router.post("/:postId/new-comment", createComment);
 router.patch("/:commentId", updateComment);
-router.delete("/:commentId", deleteComment);
+router.delete("/:commentId", authorize("admin"), deleteComment);
 
 module.exports = router;
