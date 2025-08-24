@@ -8,15 +8,15 @@ const {
   deleteComment,
 } = require("../controllers/comment");
 
-const { verify, authorize } = require("../controllers/auth/auth");
+const { authenticate, authorize } = require("../controllers/auth/auth");
 
 const router = express.Router();
 
-router.use(verify);
+router.use(authenticate);
 router.get("/", getComments);
 router.get("/:commentId", getComment);
 router.post("/:postId/new-comment", createComment);
 router.patch("/:commentId", updateComment);
-router.delete("/:commentId", authorize("admin"), deleteComment);
+router.delete("/:commentId", deleteComment);
 
 module.exports = router;

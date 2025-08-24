@@ -7,15 +7,15 @@ const {
   deletePost,
 } = require("../controllers/post");
 
-const { verify, authorize } = require("../controllers/auth/auth");
+const { authenticate, authorize } = require("../controllers/auth/auth");
 
 const router = express.Router();
 
-router.use(verify);
+router.use(authenticate);
 router.get("/", getPosts);
 router.get("/:postId", getPost);
 router.post("/", createPost);
 router.patch("/:postId", updatePost);
-router.delete("/:postId", authorize("admin"), deletePost);
+router.delete("/:postId", deletePost);
 
 module.exports = router;

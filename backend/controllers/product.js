@@ -5,7 +5,9 @@ const asyncHandler = require("../utils/asyncHandler/asyncHandler");
 
 const getProducts = asyncHandler(async (req, res, next) => {
   const features = new APIFeatures(
-    Product.find().populate({ path: "feedbacks", select: "text rating" }),
+    Product.find()
+      .populate({ path: "feedbacks", select: "review rating" })
+      .populate({ path: "user", select: "firstName email" }),
     req.query
   )
     .filter()
@@ -41,10 +43,12 @@ const getProducts = asyncHandler(async (req, res, next) => {
 });
 
 const getProduct = asyncHandler(async (req, res, next) => {
-  const product = await Product.findById(req.params.pid).populate({
-    path: "feedbacks",
-    select: "text rating",
-  });
+  const product = await Product.findById(req.params.pid)
+    .populate({
+      path: "feedbacks",
+      select: "review rating",
+    })
+    .populate({ path: "user", select: "firstName email" });
 
   if (!product) {
     return next(
@@ -59,6 +63,7 @@ const getProduct = asyncHandler(async (req, res, next) => {
 });
 
 const addProduct = asyncHandler(async (req, res, next) => {
+  req.body.user = req.user.id;
   const product = await Product.create(req.body);
   return res.status(201).json({
     status: "success",
@@ -67,36 +72,43 @@ const addProduct = asyncHandler(async (req, res, next) => {
 });
 
 const updateProduct = asyncHandler(async (req, res, next) => {
-  const updatedProduct = await Product.findByIdAndUpdate(
-    req.params.pid,
-    req.body,
-    {
-      runValidators: true,
-      new: true,
-    }
-  );
+  let product = await Product.findById(req.params.pid);
 
-  if (!updatedProduct) {
+  if (!product) {
     return next(
       new AppError(`Ooops no product with ID: ${req.params.pid}`, 404)
     );
   }
 
+  if (product.user.toString() !== req.user.id) {
+    return next(new AppError("Permission denied", 403));
+  }
+
+  product = await Product.findByIdAndUpdate(req.params.pid, req.body, {
+    new: true,
+    runValidators: true,
+  });
+
   return res.status(200).json({
     status: "success",
-    updatedProduct,
+    product,
   });
 });
 
 const deleteProduct = asyncHandler(async (req, res, next) => {
-  const product = await Product.findByIdAndDelete(req.params.pid);
+  const product = await Product.findById(req.params.pid);
 
   if (!product)
     return next(
       new AppError(`Ooops no product with ID: ${req.params.pid}`, 404)
     );
 
-  return res.status(204).json({ status: "success", data: {} });
+  if (product.user.toString() !== req.user.id)
+    return next(new AppError("Permission denied", 403));
+
+  await Product.findByIdAndDelete(req.params.pid);
+
+  return res.status(204).json({ success: true });
 });
 
 module.exports = {

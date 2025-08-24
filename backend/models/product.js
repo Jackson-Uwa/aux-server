@@ -8,14 +8,22 @@ const productSchema = mongoose.Schema(
       required: [true, "Enter product name"],
     },
     slug: String,
-    price: { type: Number },
+    price: {
+      type: Number,
+      required: [true, "Enter product rice"],
+    },
     description: {
       type: String,
-      required: [true, "Add a description"],
+      required: [true, "Please describe the product"],
     },
     thumbnail: {
       type: String,
       default: "default.jpg",
+    },
+    user: {
+      type: mongoose.Schema.ObjectId,
+      ref: "User",
+      required: [true, "Invalid user ID / Log in to create a product"],
     },
     createdAt: {
       type: Date,
@@ -28,7 +36,7 @@ const productSchema = mongoose.Schema(
   }
 );
 
-productSchema.pre("remove", async function (next) {
+productSchema.pre("delete", async function (next) {
   await this.model("Feedback").deleteMany({ product: this._id });
   next();
 });

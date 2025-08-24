@@ -7,15 +7,15 @@ const {
   deleteProduct,
 } = require("../controllers/product");
 
-const { verify, authorize } = require("../controllers/auth/auth");
+const { authenticate, authorize } = require("../controllers/auth/auth");
 
 const router = express.Router();
 
-router.use(verify);
+router.use(authenticate);
 router.get("/", getProducts);
 router.get("/:pid", getProduct);
 router.post("/", addProduct);
 router.patch("/:pid", updateProduct);
-router.delete("/:pid", authorize("admin"), deleteProduct);
+router.delete("/:pid", deleteProduct);
 
 module.exports = router;

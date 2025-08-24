@@ -10,7 +10,7 @@ const postSchema = mongoose.Schema(
     slug: String,
     description: {
       type: String,
-      required: [true, "Add a description"],
+      required: [true, "Describe your post"],
     },
     thumbnail: {
       type: String,
@@ -19,6 +19,7 @@ const postSchema = mongoose.Schema(
     user: {
       type: mongoose.Schema.ObjectId,
       ref: "User",
+      required: [true, "Invalid user ID / Log in to create a post"],
     },
     createdAt: {
       type: Date,
@@ -27,6 +28,11 @@ const postSchema = mongoose.Schema(
   },
   { toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
+
+postSchema.pre("delete", async function (next) {
+  await this.model("Comments").deleteMany({ post: this._id });
+  next();
+});
 
 postSchema.pre("save", function (next) {
   this.slug = slugify(this.title, { lower: true });

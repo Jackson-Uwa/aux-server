@@ -1,20 +1,20 @@
 const express = require("express");
 
-const {
-  getUsers,
-  getUserProfileData,
-  deleteUser,
-} = require("../controllers/users");
+const { getUsers } = require("../controllers/users");
 
 const {
   Register,
   LogIn,
-  verify,
+  authenticate,
   LogOut,
   updateMe,
+  updateUserDetails,
+  getUserProfileData,
   authorize,
+  updatePassword,
   forgotPassword,
   resetPassword,
+  deleteMe,
 } = require("../controllers/auth/auth");
 
 const router = express.Router();
@@ -25,10 +25,13 @@ router.post("/auth/logout", LogOut);
 router.post("/auth/forgot-password", forgotPassword);
 router.patch("/auth/reset-password/:resetToken", resetPassword);
 
-router.use(verify);
 router.get("/", getUsers);
+
+router.use(authenticate);
 router.get("/my-profile", getUserProfileData);
 router.patch("/me", updateMe);
-router.delete("/", authorize("admin"), deleteUser);
+router.patch("/my-details", updateUserDetails);
+router.patch("/my-profile/update-password", updatePassword);
+router.delete("/my-profile/", authorize("admin"), deleteMe);
 
 module.exports = router;

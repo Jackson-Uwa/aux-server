@@ -11,7 +11,7 @@ const SendToken = (user, statusCode, res) => {
 
   const options = {
     expires: new Date(
-      Date.now() + process.env.COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+      Date.now() + process.env.COOKIE_EXPIRES_IN * 5 * 60 * 1000
     ),
     httpOnly: true,
   };
@@ -40,7 +40,7 @@ const LogIn = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ email }).select("+password");
 
   if (!user || !(await user.matchPassword(password))) {
-    return next(new AppError("Incorrect email or password", 401));
+    return next(new AppError("Invalid user credentials", 401));
   }
 
   SendToken(user, 200, res);
@@ -53,7 +53,7 @@ const LogOut = (req, res, next) => {
   res.status(200).json({ status: "success" });
 };
 
-const verify = asyncHandler(async (req, res, next) => {
+const authenticate = asyncHandler(async (req, res, next) => {
   let token;
 
   if (req.cookies.jwt) token = req.cookies.jwt;
@@ -88,7 +88,6 @@ const isLoggedIn = async (req, res, next) => {
 
 const authorize = (...roles) => {
   return (req, res, next) => {
-    //roles ['admin', 'user'].role=user
     if (!roles.includes(req.user.role)) {
       return next(
         new AppError("User permission denied, contact IT help desk...", 403)
@@ -128,19 +127,9 @@ const updateMe = asyncHandler(async (req, res, next) => {
         return next(new AppError("problem uploading file...", 500));
       }
 
-      await User.findByIdAndUpdate(
-        req.user.id,
-        {
-          firstName: req.body.firstName,
-          lastName: req.body.lastName,
-          email: req.body.email,
-          photo: userPhoto.name,
-        },
-        {
-          new: true,
-          runValidators: true,
-        }
-      );
+      await User.findByIdAndUpdate(req.user.id, {
+        photo: userPhoto.name,
+      });
 
       res.status(200).json({
         success: true,
@@ -150,8 +139,50 @@ const updateMe = asyncHandler(async (req, res, next) => {
   );
 });
 
-const deleteMe = asyncHandler(async (req, res, next) => {
-  return 0;
+const getUserProfileData = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    return next(new AppError(`Ooops no user with ID: ${req.user.id}`, 404));
+  }
+  return res.status(200).json({
+    status: "success",
+    user,
+  });
+});
+
+const updateUserDetails = asyncHandler(async (req, res, next) => {
+  const userDetails = {
+    firstName: req.body.firstName,
+    lastName: req.body.lastName,
+    email: req.body.email,
+  };
+  const user = await User.findByIdAndUpdate(req.user.id, userDetails, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!user) {
+    return next(new AppError("Invalid user record to be updated...", 403));
+  }
+
+  return res.status(200).json({
+    status: true,
+    data: user,
+  });
+});
+
+const updatePassword = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id).select("+password");
+
+  if (!(await user.matchPassword(req.body.currentPassword))) {
+    return next(new AppError("Incorrect user password", 403));
+  }
+
+  user.password = req.body.newPassword;
+  user.confirmPassword = req.body.confirmNewPassword;
+
+  await user.save();
+  SendToken(user, 200, res);
 });
 
 const forgotPassword = asyncHandler(async (req, res, next) => {
@@ -214,20 +245,45 @@ const resetPassword = asyncHandler(async (req, res, next) => {
 
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
+  user.passwordChangedAt = Date.now();
 
   await user.save();
 
-  SendToken(user, 200, res);
+  const message = `User password has been changed at ${user.passwordChangedAt}`;
+
+  try {
+    await Email({
+      email: user.email,
+      subject: "Password reset successful",
+      message,
+    });
+
+    SendToken(user, 200, res);
+  } catch (error) {
+    return next(
+      new AppError("There was an error processing reset password email", 500)
+    );
+  }
+});
+
+const deleteMe = asyncHandler(async (req, res, next) => {
+  await User.findByIdAndUpdate(req.user.id, {
+    active: false,
+  });
+  return res.status(204).json({ success: true });
 });
 
 module.exports = {
   Register,
   LogIn,
   LogOut,
-  verify,
+  authenticate,
   isLoggedIn,
   authorize,
   updateMe,
+  getUserProfileData,
+  updateUserDetails,
+  updatePassword,
   forgotPassword,
   resetPassword,
   deleteMe,

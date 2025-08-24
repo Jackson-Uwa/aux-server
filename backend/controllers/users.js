@@ -36,28 +36,6 @@ const getUsers = asyncHandler(async (req, res, next) => {
   });
 });
 
-const getUserProfileData = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.user.id);
-  if (!user) {
-    return next(new AppError(`Ooops no user with ID: ${req.user.id}`, 404));
-  }
-  return res.status(200).json({
-    status: "success",
-    user,
-  });
-});
-
-const deleteUser = asyncHandler(async (req, res, next) => {
-  const user = await User.findByIdAndDelete(req.user.id);
-
-  if (!user) {
-    return next(new AppError(`Ooops no user with ID: ${req.user.id}`, 404));
-  }
-  return res.status(204).json({ status: "success" });
-});
-
 module.exports = {
   getUsers,
-  getUserProfileData,
-  deleteUser,
 };

@@ -3,6 +3,11 @@ const fileupload = require("express-fileupload");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
+const mongoSanitize = require("express-mongo-sanitize");
+const rateLimit = require("express-rate-limit");
+const helmet = require("helmet");
+// const xss = require("xss-clean");
+const hpp = require("hpp");
 
 require("dotenv").config({
   path: ".env",
@@ -18,6 +23,19 @@ connectDB();
 
 app.use(cookieParser());
 app.use(morgan("dev"));
+
+//API SECURITY FEATURES
+
+app.use(mongoSanitize());
+app.use(
+  rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 100,
+  })
+);
+
+app.use(helmet());
+app.use(hpp());
 
 app.use(
   cors({

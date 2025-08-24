@@ -8,15 +8,15 @@ const {
   deleteFeedback,
 } = require("../controllers/feedback");
 
-const { verify, authorize } = require("../controllers/auth/auth");
+const { authenticate, authorize } = require("../controllers/auth/auth");
 
 const router = express.Router();
 
-router.use(verify);
+router.use(authenticate);
 router.get("/", getFeedbacks);
 router.get("/:fid", getFeedbackID);
 router.post("/:pid/new-feedback", addFeedback);
 router.patch("/:fid", updateFeedback);
-router.delete("/:fid", authorize("admin"), deleteFeedback);
+router.delete("/:fid", deleteFeedback);
 
 module.exports = router;

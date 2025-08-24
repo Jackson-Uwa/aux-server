@@ -1,13 +1,15 @@
 const Feedback = require("../models/feedback");
+const Product = require("../models/product");
 const APIFeatures = require("../utils/APIFeatures/APIFeatures");
 const AppError = require("../utils/errorHandler/AppError");
 const asyncHandler = require("../utils/asyncHandler/asyncHandler");
-
-const Product = require("../models/product");
+const feedback = require("../models/feedback");
 
 const getFeedbacks = asyncHandler(async (req, res, next) => {
   const features = new APIFeatures(
-    Feedback.find().populate({ path: "product", select: "name price" }),
+    Feedback.find()
+      .populate({ path: "product", select: "name price" })
+      .populate({ path: "user", select: "firstName email" }),
     req.query
   )
     .filter()
@@ -43,10 +45,12 @@ const getFeedbacks = asyncHandler(async (req, res, next) => {
 });
 
 const getFeedbackID = asyncHandler(async (req, res, next) => {
-  const feedback = await Feedback.findById(req.params.fid).populate({
-    path: "product",
-    select: "name price",
-  });
+  const feedback = await Feedback.findById(req.params.fid)
+    .populate({
+      path: "product",
+      select: "name price",
+    })
+    .populate({ path: "user", select: "firstName email" });
 
   if (!feedback) {
     return next(new AppError(`Ooops no feed with ID: ${req.params.fid}`, 404));
@@ -56,16 +60,17 @@ const getFeedbackID = asyncHandler(async (req, res, next) => {
 });
 
 const addFeedback = asyncHandler(async (req, res, next) => {
-  const { pid } = req.params;
-  req.body.product = pid;
+  req.body.product = req.params.pid;
+  req.body.user = req.user.id;
 
-  const product = await Product.findById(pid);
+  const product = await Product.findById(req.params.pid);
 
-  if (product._id.toString() !== pid) {
+  if (!product) {
     return next(new AppError("invalid product id, unable to create feedback"));
   }
 
   const newFeedback = await Feedback.create(req.body);
+
   return res.status(201).json({
     status: "success",
     newFeedback,
@@ -73,35 +78,41 @@ const addFeedback = asyncHandler(async (req, res, next) => {
 });
 
 const updateFeedback = asyncHandler(async (req, res, next) => {
-  const updatedFeedback = await Feedback.findByIdAndUpdate(
-    req.params.fid,
-    req.body,
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+  let feedback = await Feedback.findByIdAndUpdate(req.params.fid);
 
-  if (!updatedFeedback) {
+  if (!feedback) {
     return next(new AppError(`Ooops no feed with ID: ${req.params.fid}`, 404));
   }
-  return res.status(201).json({
+
+  if (feedback.user.toString() !== req.user.id) {
+    return next(new AppError("Permission denied", 403));
+  }
+
+  feedback = await Feedback.findByIdAndUpdate(req.params.fid, req.body, {
+    new: true,
+    runValidators: true,
+  });
+
+  return res.status(200).json({
     status: "success",
-    updatedFeedback,
+    feedback,
   });
 });
 
 const deleteFeedback = asyncHandler(async (req, res, next) => {
-  const deletedFeed = await Feedback.findByIdAndDelete(req.params.fid);
-  if (!deletedFeed) {
+  const feedback = await Feedback.findById(req.params.fid);
+
+  if (!feedback) {
     return next(new AppError(`Ooops no feed with ID: ${req.params.fid}`, 404));
   }
-  return res
-    .json({
-      status: "success",
-      data: {},
-    })
-    .status(204);
+
+  if (feedback.user.toString() !== req.user.id) {
+    return next(new AppError("Permission denied", 403));
+  }
+
+  await Feedback.findByIdAndDelete(req.params.fid);
+
+  return res.status(204).json({ success: true });
 });
 
 module.exports = {
