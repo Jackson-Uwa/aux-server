@@ -1,5 +1,4 @@
 const nodemailer = require("nodemailer");
-const asyncHandler = require("../asyncHandler/asyncHandler");
 
 const Email = async (userOptions) => {
   let transporter;
@@ -15,7 +14,7 @@ const Email = async (userOptions) => {
     });
   } else {
     transporter = nodemailer.createTransport({
-      service: "SENDGRID",
+      service: process.env.SENDGRID_APIKEY,
       auth: {
         user: process.env.SENDGRID_USERNAME,
         pass: process.env.SENDGRID_PASSWORD,

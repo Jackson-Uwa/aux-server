@@ -156,6 +156,7 @@ const updateUserDetails = asyncHandler(async (req, res, next) => {
     lastName: req.body.lastName,
     email: req.body.email,
   };
+  
   const user = await User.findByIdAndUpdate(req.user.id, userDetails, {
     new: true,
     runValidators: true,
