@@ -3,7 +3,7 @@ const nodemailer = require("nodemailer");
 const Email = async (userOptions) => {
   let transporter;
 
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === "production") {
     transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,
