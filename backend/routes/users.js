@@ -25,9 +25,9 @@ router.post("/auth/logout", LogOut);
 router.post("/auth/forgot-password", forgotPassword);
 router.patch("/auth/reset-password/:resetToken", resetPassword);
 
-router.get("/", getUsers);
 
 router.use(authenticate);
+router.get("/", getUsers);
 router.get("/my-profile", getUserProfileData);
 router.patch("/me", updateMe);
 router.patch("/my-details", updateUserDetails);
